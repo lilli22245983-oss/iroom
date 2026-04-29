@@ -1,24 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-} from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ManualEntryModel } from "@/model/firebase/manual_entry_model";
-import { PolicyModel } from "@/model/firebase/policy_model";
 
 type Props = {
   itemName: string;
 };
 
 export default function ManualHeroSection({ itemName }: Props) {
-  
   const [policyOpen, setPolicyOpen] = useState(false);
   const [selectedColor, setSelectedColor] = useState<"white" | "black">(
     "white"
@@ -27,7 +18,6 @@ export default function ManualHeroSection({ itemName }: Props) {
   const [imageVisible, setImageVisible] = useState(true);
 
   const [manual, setManual] = useState<ManualEntryModel | null>(null);
-  const [asPolicy, setAsPolicy] = useState<PolicyModel | null>(null);
 
   useEffect(() => {
     const fetchManual = async () => {
@@ -52,6 +42,7 @@ export default function ManualHeroSection({ itemName }: Props) {
 
         setManual(found ?? null);
       } catch (error) {
+        setManual(null);
       }
     };
 
@@ -59,21 +50,6 @@ export default function ManualHeroSection({ itemName }: Props) {
       fetchManual();
     }
   }, [itemName]);
-
-  useEffect(() => {
-    const fetchPolicy = async () => {
-      try {
-        const snap = await getDoc(doc(db, "policies", "as"));
-
-        if (snap.exists()) {
-          setAsPolicy(PolicyModel.fromMap(snap.data(), snap.id));
-        }
-      } catch (error) {
-      }
-    };
-
-    fetchPolicy();
-  }, []);
 
   const smartCareMessages = useMemo(() => {
     return (
@@ -97,6 +73,14 @@ export default function ManualHeroSection({ itemName }: Props) {
 
   const displayImage = selectedColor === "white" ? whiteImage : blackImage;
   const hasBothImages = !!(whiteImage && blackImage);
+
+  const warranty = manual?.warranty;
+  const warrantyTitle = warranty?.title || "제품 보증 안내";
+  const warrantyContent =
+    warranty?.content ||
+    "등록된 제품 보증 정보가 없습니다.";
+
+  const warrantyAvailable = !!warranty?.isActive;
 
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
@@ -140,12 +124,6 @@ export default function ManualHeroSection({ itemName }: Props) {
     setSelectedColor((prev) => (prev === "white" ? "black" : "white"));
   };
 
-  const policyTitle = asPolicy?.title || "A/S 정책 안내";
-  const policyContent =
-    asPolicy?.content ||
-    "제품 보증 기간 내 정상적인 사용 상태에서 발생한 고장은 무상으로 점검 및 수리가 가능합니다.";
-    
-
   return (
     <>
       <section className="relative overflow-hidden rounded-b-[34px] bg-gradient-to-b from-[#5f89eb] via-[#2f63df] to-[#224bbb] text-white shadow-[0_14px_34px_rgba(20,55,140,0.22)]">
@@ -162,23 +140,27 @@ export default function ManualHeroSection({ itemName }: Props) {
             <button
               type="button"
               onClick={() => setPolicyOpen(true)}
-              className="mt-5 inline-flex h-[38px] w-fit cursor-pointer items-center rounded-full border border-white/30 bg-white/20 px-3.5 text-[12px] font-bold text-white backdrop-blur-md shadow-[0_6px_20px_rgba(0,0,0,0.25),inset_0_1px_1px_rgba(255,255,255,0.25)] transition hover:bg-white/30 active:scale-95"
+              disabled={!warrantyAvailable}
+              className={`mt-5 inline-flex h-[38px] w-fit items-center rounded-full border border-white/30 px-3.5 text-[12px] font-bold text-white backdrop-blur-md shadow-[0_6px_20px_rgba(0,0,0,0.25),inset_0_1px_1px_rgba(255,255,255,0.25)] transition active:scale-95 ${
+                warrantyAvailable
+                  ? "cursor-pointer bg-white/20 hover:bg-white/30"
+                  : "cursor-not-allowed bg-white/10 opacity-50"
+              }`}
             >
-              A/S 정책 안내
+              제품 보증 안내
             </button>
 
             <div className="mt-4">
-                <button
-                  type="button"
-                  onClick={hasBothImages ? handleToggleColor : undefined}
-                  disabled={!hasBothImages}
-                  className={`inline-flex h-[42px] items-center gap-2.5 rounded-full border border-white/15 px-3.5 backdrop-blur-sm transition active:scale-95
-                    ${
-                      hasBothImages
-                        ? "cursor-pointer bg-white/10 hover:bg-white/15"
-                        : "cursor-not-allowed bg-white/5 opacity-50"
-                    }`}
-                >
+              <button
+                type="button"
+                onClick={hasBothImages ? handleToggleColor : undefined}
+                disabled={!hasBothImages}
+                className={`inline-flex h-[42px] items-center gap-2.5 rounded-full border border-white/15 px-3.5 backdrop-blur-sm transition active:scale-95 ${
+                  hasBothImages
+                    ? "cursor-pointer bg-white/10 hover:bg-white/15"
+                    : "cursor-not-allowed bg-white/5 opacity-50"
+                }`}
+              >
                 <span className="text-[14px] font-semibold text-white">
                   Color
                 </span>
@@ -247,7 +229,7 @@ export default function ManualHeroSection({ itemName }: Props) {
           <div>
             <p className="text-[12px] font-bold text-[#2f63df]">IROOM</p>
             <h3 className="mt-1 text-[22px] font-extrabold tracking-[-0.02em]">
-              {policyTitle}
+              {warrantyTitle}
             </h3>
           </div>
 
@@ -262,7 +244,7 @@ export default function ManualHeroSection({ itemName }: Props) {
 
         <div className="mt-5 rounded-[22px] bg-[#f6f8ff] p-4">
           <p className="whitespace-pre-line text-[14px] leading-7 text-gray-700">
-            {policyContent}
+            {warrantyContent}
           </p>
         </div>
 
