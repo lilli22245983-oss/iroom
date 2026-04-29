@@ -41,8 +41,6 @@ export type AccessoryItemMap = {
   order: number;
 };
 
-
-
 export type SpecDataItemMap = {
   label: string;
   value: string;
@@ -55,26 +53,32 @@ export type SpecSectionMap = {
   order: number;
 };
 
+export type ManualWarrantyMap = {
+  title: string;
+  content: string;
+  isActive: boolean;
+};
 
 export type ManualEntryMap = {
-  id: string; //문서 id
-  productId: string;  //제품 연결 id
-  productName: string;  //제품 이름
-  hero: ManualHeroMap;  //맨 위의 hero부분을 만들기 위한 데이터
-  videos: VideoGuideItemMap[];  //유튜브 링크 + 제목
-  usageGuides: UsageGuideItemMap[]; //이미지 + 설명
-  consumables: ConsumableItemMap[]; //소모품 이름 + 링크
-  componentImageUrl: string;  //구성품 이미지
-  componentNotice: string;  //구성품 안내문구
-  accessories: AccessoryItemMap[];  //엑세서리
-  faqs: { //메뉴얼 전용 FAQ
+  id: string;
+  productId: string;
+  productName: string;
+  hero: ManualHeroMap;
+  videos: VideoGuideItemMap[];
+  usageGuides: UsageGuideItemMap[];
+  consumables: ConsumableItemMap[];
+  componentImageUrl: string;
+  componentNotice: string;
+  accessories: AccessoryItemMap[];
+  faqs: {
     id: string;
     question: string;
     answer: string;
     order: number;
   }[];
-  specs: SpecSectionMap[];  //제품 사양
-  isActive: boolean;  //보여줄지 말지
+  specs: SpecSectionMap[];
+  warranty: ManualWarrantyMap;
+  isActive: boolean;
 };
 
 export class VideoGuideItemModel {
@@ -208,7 +212,10 @@ export class ManualFaqItemModel {
     public order: number = 0
   ) {}
 
-  static fromMap(map: Partial<{ id: string; question: string; answer: string; order: number }>, id?: string): ManualFaqItemModel {
+  static fromMap(
+    map: Partial<{ id: string; question: string; answer: string; order: number }>,
+    id?: string
+  ): ManualFaqItemModel {
     return new ManualFaqItemModel(
       id ?? map.id ?? "",
       map.question ?? "",
@@ -275,7 +282,29 @@ export class SpecSectionModel {
   }
 }
 
+export class ManualWarrantyModel {
+  constructor(
+    public title: string = "제품 보증 안내",
+    public content: string = "",
+    public isActive: boolean = true
+  ) {}
 
+  static fromMap(map?: Partial<ManualWarrantyMap>): ManualWarrantyModel {
+    return new ManualWarrantyModel(
+      map?.title ?? "제품 보증 안내",
+      map?.content ?? "",
+      map?.isActive ?? true
+    );
+  }
+
+  toMap(): ManualWarrantyMap {
+    return {
+      title: this.title,
+      content: this.content,
+      isActive: this.isActive,
+    };
+  }
+}
 
 export class ManualEntryModel {
   constructor(
@@ -294,6 +323,7 @@ export class ManualEntryModel {
     public accessories: AccessoryItemModel[] = [],
     public faqs: ManualFaqItemModel[] = [],
     public specs: SpecSectionModel[] = [],
+    public warranty: ManualWarrantyModel = new ManualWarrantyModel(),
     public isActive: boolean = true
   ) {}
 
@@ -314,6 +344,7 @@ export class ManualEntryModel {
       (map.accessories ?? []).map((item) => AccessoryItemModel.fromMap(item)),
       (map.faqs ?? []).map((item) => ManualFaqItemModel.fromMap(item)),
       (map.specs ?? []).map((item) => SpecSectionModel.fromMap(item)),
+      ManualWarrantyModel.fromMap(map.warranty),
       map.isActive ?? true
     );
   }
@@ -332,6 +363,7 @@ export class ManualEntryModel {
       accessories: this.accessories.map((item) => item.toMap()),
       faqs: this.faqs.map((item) => item.toMap()),
       specs: this.specs.map((item) => item.toMap()),
+      warranty: this.warranty.toMap(),
       isActive: this.isActive,
     };
   }

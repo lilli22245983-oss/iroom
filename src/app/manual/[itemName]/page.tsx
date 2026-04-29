@@ -74,7 +74,6 @@ export default function ManualDetailPage() {
         setManual(foundManual);
         setManualExists(!!foundManual);
       } catch (error) {
-        console.error("메뉴얼 존재 여부 확인 실패:", error);
         setManualExists(false);
       } finally {
         setManualLoading(false);
@@ -257,6 +256,7 @@ export default function ManualDetailPage() {
       <WarrantyPage
         open={warrantyOpen}
         onClose={() => setWarrantyOpen(false)}
+        manualId={manual?.id ?? ""}
       />
 
       {/*메뉴얼 다운로드 페이지 */}

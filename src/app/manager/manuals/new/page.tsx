@@ -16,6 +16,7 @@ import {
   ManualFaqItemModel,
   SpecSectionModel,
   SpecDataItemModel,
+  ManualWarrantyModel,
 } from "@/model/firebase/manual_entry_model";
 import {
   ArrowLeft,
@@ -24,9 +25,7 @@ import {
   Plus,
   Trash2,
   Upload,
-  ImageIcon,
 } from "lucide-react";
-
 
 function createId(prefix: string) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -68,7 +67,15 @@ function ImageUploadBox({
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (!file) return;
+
+            if (!file.type.startsWith("image/")) {
+              alert("이미지 파일만 업로드할 수 있어요.");
+              e.target.value = "";
+              return;
+            }
+
             onChange(file);
+            e.target.value = "";
           }}
         />
 
@@ -137,8 +144,17 @@ function ManagerManualNewPageContent() {
   ]);
 
   const [specs, setSpecs] = useState<SpecSectionModel[]>([
-    new SpecSectionModel(createId("spec"), "", [new SpecDataItemModel("", "")], 0),
+    new SpecSectionModel(
+      createId("spec"),
+      "",
+      [new SpecDataItemModel("", "")],
+      0
+    ),
   ]);
+
+  const [warrantyTitle, setWarrantyTitle] = useState("제품 보증 안내");
+  const [warrantyContent, setWarrantyContent] = useState("");
+  const [warrantyIsActive, setWarrantyIsActive] = useState(true);
 
   const cardClass =
     "rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_45px_rgba(15,23,42,0.08)]";
@@ -182,7 +198,7 @@ function ManagerManualNewPageContent() {
 
       const snapshot = await getDocs(collection(db, "products"));
       const items = snapshot.docs
-        .map((doc) => ProductModel.fromMap(doc.data(), doc.id))
+        .map((docSnap) => ProductModel.fromMap(docSnap.data(), docSnap.id))
         .sort((a, b) => {
           const brandCompare = (a.brandName ?? "").localeCompare(
             b.brandName ?? "",
@@ -411,6 +427,13 @@ function ManagerManualNewPageContent() {
     );
   };
 
+  const removeSmartCareMessage = (index: number) => {
+    setSmartCareMessages((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      return next.length ? next : [""];
+    });
+  };
+
   const handleSave = async () => {
     if (!selectedProduct) {
       alert("연결할 제품을 선택해주세요.");
@@ -421,8 +444,8 @@ function ManagerManualNewPageContent() {
       setSaving(true);
 
       const existsSnapshot = await getDocs(collection(db, "manuals"));
-      const exists = existsSnapshot.docs.some((doc) => {
-        const item = ManualEntryModel.fromMap(doc.data(), doc.id);
+      const exists = existsSnapshot.docs.some((docSnap) => {
+        const item = ManualEntryModel.fromMap(docSnap.data(), docSnap.id);
         return item.productId === selectedProduct.id;
       });
 
@@ -437,10 +460,12 @@ function ManagerManualNewPageContent() {
         whiteImageFile,
         `${baseFolder}/hero`
       );
+
       const blackImageUrl = await uploadIfExists(
         blackImageFile,
         `${baseFolder}/hero`
       );
+
       const componentImageUrl = await uploadIfExists(
         componentImageFile,
         `${baseFolder}/components`
@@ -472,7 +497,10 @@ function ManagerManualNewPageContent() {
 
       const uploadedConsumables = await Promise.all(
         consumables
-          .filter((item) => item.name.trim() || consumableFiles[item.id] || item.url.trim())
+          .filter(
+            (item) =>
+              item.name.trim() || consumableFiles[item.id] || item.url.trim()
+          )
           .map(async (item, index) => {
             const imageUrl = await uploadIfExists(
               consumableFiles[item.id],
@@ -529,7 +557,8 @@ function ManagerManualNewPageContent() {
         },
         videos
           .filter(
-            (item) => item.title.trim() || item.subtitle.trim() || item.url.trim()
+            (item) =>
+              item.title.trim() || item.subtitle.trim() || item.url.trim()
           )
           .map(
             (item, index) =>
@@ -577,6 +606,11 @@ function ManagerManualNewPageContent() {
                 Number.isFinite(section.order) ? section.order : index
               )
           ),
+        new ManualWarrantyModel(
+          warrantyTitle.trim() || "제품 보증 안내",
+          warrantyContent.trim(),
+          warrantyIsActive
+        ),
         isActive
       );
 
@@ -664,6 +698,7 @@ function ManagerManualNewPageContent() {
                   <option value="">
                     {loadingProducts ? "제품 불러오는 중..." : "제품을 선택하세요"}
                   </option>
+
                   {products.map((product) => (
                     <option key={product.id} value={product.id}>
                       [{product.brandName || "브랜드 없음"}] {product.name}
@@ -684,6 +719,16 @@ function ManagerManualNewPageContent() {
                 </select>
               </div>
             </div>
+
+            {selectedProduct && (
+              <div className="mt-4 rounded-[20px] bg-slate-50 px-4 py-4 text-sm text-slate-600">
+                선택된 제품:{" "}
+                <span className="font-bold text-slate-900">
+                  [{selectedProduct.brandName || "브랜드 없음"}]{" "}
+                  {selectedProduct.name}
+                </span>
+              </div>
+            )}
           </section>
 
           <section className={cardClass}>
@@ -691,6 +736,7 @@ function ManagerManualNewPageContent() {
 
             <div className="mt-5 space-y-3">
               <label className={labelClass}>스마트케어 문구</label>
+
               {smartCareMessages.map((message, index) => (
                 <div key={index} className="flex gap-2">
                   <input
@@ -705,13 +751,10 @@ function ManagerManualNewPageContent() {
                     placeholder="예: 강력한 흡입력으로 뭐든 다 빨아들여요"
                     className={inputClass}
                   />
+
                   <button
                     type="button"
-                    onClick={() =>
-                      setSmartCareMessages((prev) =>
-                        prev.filter((_, i) => i !== index)
-                      )
-                    }
+                    onClick={() => removeSmartCareMessage(index)}
                     className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] border border-red-200 bg-red-50 text-red-600"
                   >
                     <Trash2 size={16} />
@@ -755,6 +798,7 @@ function ManagerManualNewPageContent() {
           <section className={cardClass}>
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-[20px] font-black text-slate-900">영상 가이드</h2>
+
               <button
                 type="button"
                 onClick={() =>
@@ -784,12 +828,24 @@ function ManagerManualNewPageContent() {
                 >
                   <div className="mb-4 flex items-center justify-between">
                     <p className="font-bold text-slate-800">영상 {index + 1}</p>
+
                     <button
                       type="button"
                       onClick={() =>
-                        setVideos((prev) =>
-                          prev.filter((item) => item.id !== video.id)
-                        )
+                        setVideos((prev) => {
+                          const next = prev.filter((item) => item.id !== video.id);
+                          return next.length
+                            ? next
+                            : [
+                                new VideoGuideItemModel(
+                                  createId("video"),
+                                  "",
+                                  "",
+                                  "",
+                                  0
+                                ),
+                              ];
+                        })
                       }
                       className="inline-flex items-center gap-2 rounded-[14px] border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-600"
                     >
@@ -805,6 +861,7 @@ function ManagerManualNewPageContent() {
                       placeholder="제목"
                       className={inputClass}
                     />
+
                     <input
                       value={video.subtitle}
                       onChange={(e) =>
@@ -813,12 +870,14 @@ function ManagerManualNewPageContent() {
                       placeholder="부제목"
                       className={inputClass}
                     />
+
                     <input
                       value={video.url}
                       onChange={(e) => updateVideo(index, "url", e.target.value)}
                       placeholder="영상 URL"
                       className={inputClass}
                     />
+
                     <input
                       type="number"
                       value={video.order}
@@ -836,6 +895,7 @@ function ManagerManualNewPageContent() {
           <section className={cardClass}>
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-[20px] font-black text-slate-900">사용 가이드</h2>
+
               <button
                 type="button"
                 onClick={() =>
@@ -865,12 +925,24 @@ function ManagerManualNewPageContent() {
                 >
                   <div className="mb-4 flex items-center justify-between">
                     <p className="font-bold text-slate-800">가이드 {index + 1}</p>
+
                     <button
                       type="button"
                       onClick={() =>
-                        setUsageGuides((prev) =>
-                          prev.filter((x) => x.id !== item.id)
-                        )
+                        setUsageGuides((prev) => {
+                          const next = prev.filter((x) => x.id !== item.id);
+                          return next.length
+                            ? next
+                            : [
+                                new UsageGuideItemModel(
+                                  createId("usage"),
+                                  "",
+                                  "",
+                                  "",
+                                  0
+                                ),
+                              ];
+                        })
                       }
                       className="inline-flex items-center gap-2 rounded-[14px] border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-600"
                     >
@@ -930,6 +1002,7 @@ function ManagerManualNewPageContent() {
           <section className={cardClass}>
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-[20px] font-black text-slate-900">소모품</h2>
+
               <button
                 type="button"
                 onClick={() =>
@@ -959,12 +1032,24 @@ function ManagerManualNewPageContent() {
                 >
                   <div className="mb-4 flex items-center justify-between">
                     <p className="font-bold text-slate-800">소모품 {index + 1}</p>
+
                     <button
                       type="button"
                       onClick={() =>
-                        setConsumables((prev) =>
-                          prev.filter((x) => x.id !== item.id)
-                        )
+                        setConsumables((prev) => {
+                          const next = prev.filter((x) => x.id !== item.id);
+                          return next.length
+                            ? next
+                            : [
+                                new ConsumableItemModel(
+                                  createId("consumable"),
+                                  "",
+                                  "",
+                                  "",
+                                  0
+                                ),
+                              ];
+                        })
                       }
                       className="inline-flex items-center gap-2 rounded-[14px] border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-600"
                     >
@@ -982,6 +1067,7 @@ function ManagerManualNewPageContent() {
                       placeholder="이름"
                       className={inputClass}
                     />
+
                     <input
                       type="number"
                       value={item.order}
@@ -1048,6 +1134,7 @@ function ManagerManualNewPageContent() {
           <section className={cardClass}>
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-[20px] font-black text-slate-900">액세서리</h2>
+
               <button
                 type="button"
                 onClick={() =>
@@ -1080,12 +1167,25 @@ function ManagerManualNewPageContent() {
                     <p className="font-bold text-slate-800">
                       액세서리 {index + 1}
                     </p>
+
                     <button
                       type="button"
                       onClick={() =>
-                        setAccessories((prev) =>
-                          prev.filter((x) => x.id !== item.id)
-                        )
+                        setAccessories((prev) => {
+                          const next = prev.filter((x) => x.id !== item.id);
+                          return next.length
+                            ? next
+                            : [
+                                new AccessoryItemModel(
+                                  createId("accessory"),
+                                  "",
+                                  "",
+                                  "",
+                                  false,
+                                  0
+                                ),
+                              ];
+                        })
                       }
                       className="inline-flex items-center gap-2 rounded-[14px] border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-600"
                     >
@@ -1158,8 +1258,54 @@ function ManagerManualNewPageContent() {
           </section>
 
           <section className={cardClass}>
+            <h2 className="text-[20px] font-black text-slate-900">제품 보증</h2>
+
+            <div className="mt-5 grid grid-cols-1 gap-4">
+              <div>
+                <label className={labelClass}>보증 사용 여부</label>
+                <select
+                  value={warrantyIsActive ? "true" : "false"}
+                  onChange={(e) => setWarrantyIsActive(e.target.value === "true")}
+                  className={inputClass}
+                >
+                  <option value="true">사용</option>
+                  <option value="false">숨김</option>
+                </select>
+              </div>
+
+              <div>
+                <label className={labelClass}>보증 제목</label>
+                <input
+                  value={warrantyTitle}
+                  onChange={(e) => setWarrantyTitle(e.target.value)}
+                  placeholder="예: 제품 보증 안내"
+                  className={inputClass}
+                />
+              </div>
+
+              <div>
+                <label className={labelClass}>보증 내용</label>
+                <textarea
+                  rows={8}
+                  value={warrantyContent}
+                  onChange={(e) => setWarrantyContent(e.target.value)}
+                  placeholder={`예:
+구입일로부터 1년간 무상 보증이 제공됩니다.
+소모품 및 고객 과실로 인한 고장은 보증 대상에서 제외됩니다.
+A/S 접수 시 구매 영수증 또는 구매 내역이 필요할 수 있습니다.`}
+                  className={textareaClass}
+                />
+                <p className="mt-2 text-[13px] font-medium text-slate-500">
+                  한 줄씩 입력하면 사용자 화면에서 항목처럼 나눠서 표시돼요.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className={cardClass}>
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-[20px] font-black text-slate-900">매뉴얼 FAQ</h2>
+
               <button
                 type="button"
                 onClick={() =>
@@ -1187,6 +1333,7 @@ function ManagerManualNewPageContent() {
                     placeholder="질문"
                     className={inputClass}
                   />
+
                   <textarea
                     rows={4}
                     value={item.answer}
@@ -1194,6 +1341,7 @@ function ManagerManualNewPageContent() {
                     placeholder="답변"
                     className={`${textareaClass} mt-3`}
                   />
+
                   <div className="mt-3 flex gap-2">
                     <input
                       type="number"
@@ -1203,10 +1351,16 @@ function ManagerManualNewPageContent() {
                       }
                       className={inputClass}
                     />
+
                     <button
                       type="button"
                       onClick={() =>
-                        setFaqs((prev) => prev.filter((x) => x.id !== item.id))
+                        setFaqs((prev) => {
+                          const next = prev.filter((x) => x.id !== item.id);
+                          return next.length
+                            ? next
+                            : [new ManualFaqItemModel(createId("faq"), "", "", 0)];
+                        })
                       }
                       className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] border border-red-200 bg-red-50 text-red-600"
                     >
@@ -1221,6 +1375,7 @@ function ManagerManualNewPageContent() {
           <section className={cardClass}>
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-[20px] font-black text-slate-900">제품 사양</h2>
+
               <button
                 type="button"
                 onClick={() =>
@@ -1251,12 +1406,23 @@ function ManagerManualNewPageContent() {
                     <p className="font-bold text-slate-800">
                       사양 섹션 {sectionIndex + 1}
                     </p>
+
                     <button
                       type="button"
                       onClick={() =>
-                        setSpecs((prev) =>
-                          prev.filter((x) => x.id !== section.id)
-                        )
+                        setSpecs((prev) => {
+                          const next = prev.filter((x) => x.id !== section.id);
+                          return next.length
+                            ? next
+                            : [
+                                new SpecSectionModel(
+                                  createId("spec"),
+                                  "",
+                                  [new SpecDataItemModel("", "")],
+                                  0
+                                ),
+                              ];
+                        })
                       }
                       className="inline-flex items-center gap-2 rounded-[14px] border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-600"
                     >
@@ -1274,6 +1440,7 @@ function ManagerManualNewPageContent() {
                       placeholder="섹션 제목"
                       className={inputClass}
                     />
+
                     <input
                       type="number"
                       value={section.order}
@@ -1303,6 +1470,7 @@ function ManagerManualNewPageContent() {
                           placeholder="항목명"
                           className={inputClass}
                         />
+
                         <input
                           value={row.value}
                           onChange={(e) =>
@@ -1316,6 +1484,7 @@ function ManagerManualNewPageContent() {
                           placeholder="값"
                           className={inputClass}
                         />
+
                         <button
                           type="button"
                           onClick={() =>

@@ -3,15 +3,19 @@
 import { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { PolicyModel } from "@/model/firebase/policy_model";
+import {
+  ManualEntryModel,
+  ManualWarrantyModel,
+} from "@/model/firebase/manual_entry_model";
 
 type Props = {
   open: boolean;
   onClose: () => void;
+  manualId: string;
 };
 
-export default function WarrantyPage({ open, onClose }: Props) {
-  const [policy, setPolicy] = useState<PolicyModel | null>(null);
+export default function WarrantyPage({ open, onClose, manualId }: Props) {
+  const [warranty, setWarranty] = useState<ManualWarrantyModel | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -26,33 +30,42 @@ export default function WarrantyPage({ open, onClose }: Props) {
   }, [open]);
 
   useEffect(() => {
-    const fetchWarrantyPolicy = async () => {
+    const fetchWarranty = async () => {
       if (!open) return;
+      if (!manualId) {
+        setWarranty(null);
+        return;
+      }
 
       try {
         setLoading(true);
 
-        const snap = await getDoc(doc(db, "policies", "warranty"));
+        const snap = await getDoc(doc(db, "manuals", manualId));
 
         if (snap.exists()) {
-          const data = PolicyModel.fromMap(snap.data(), snap.id);
-          setPolicy(data.isActive ? data : null);
+          const manual = ManualEntryModel.fromMap(snap.data(), snap.id);
+
+          if (manual.warranty.isActive) {
+            setWarranty(manual.warranty);
+          } else {
+            setWarranty(null);
+          }
         } else {
-          setPolicy(null);
+          setWarranty(null);
         }
       } catch (error) {
-        console.error("제품 보증 정책 불러오기 실패:", error);
-        setPolicy(null);
+        console.error("제품 보증 정보 불러오기 실패:", error);
+        setWarranty(null);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchWarrantyPolicy();
-  }, [open]);
+    fetchWarranty();
+  }, [open, manualId]);
 
-  const lines = policy?.content
-    ? policy.content
+  const lines = warranty?.content
+    ? warranty.content
         .split("\n")
         .map((line) => line.trim())
         .filter(Boolean)
@@ -98,13 +111,13 @@ export default function WarrantyPage({ open, onClose }: Props) {
                   제품 보증 정보를 불러오는 중입니다.
                 </p>
               </div>
-            ) : !policy ? (
+            ) : !warranty ? (
               <div className="rounded-[24px] bg-white p-6 text-center shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
                 <p className="text-[15px] font-bold text-gray-700">
                   등록된 제품 보증 정보가 없습니다.
                 </p>
                 <p className="mt-2 text-[13px] text-gray-400">
-                  관리자 정책 관리에서 제품 보증 내용을 등록해주세요.
+                  관리자 메뉴얼 관리에서 제품 보증 내용을 등록해주세요.
                 </p>
               </div>
             ) : (
@@ -113,20 +126,26 @@ export default function WarrantyPage({ open, onClose }: Props) {
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600">
                     🛡️
                   </span>
-                  {policy.title || "제품 보증 안내"}
+                  {warranty.title || "제품 보증 안내"}
                 </h3>
 
-                <ul className="mt-4 space-y-2">
-                  {lines.map((line, index) => (
-                    <li
-                      key={index}
-                      className="flex items-start gap-2 text-[14px] leading-6 text-gray-600"
-                    >
-                      <span className="mt-[9px] h-[6px] w-[6px] shrink-0 rounded-full bg-gray-400" />
-                      <span>{line}</span>
-                    </li>
-                  ))}
-                </ul>
+                {lines.length > 0 ? (
+                  <ul className="mt-4 space-y-2">
+                    {lines.map((line, index) => (
+                      <li
+                        key={index}
+                        className="flex items-start gap-2 text-[14px] leading-6 text-gray-600"
+                      >
+                        <span className="mt-[9px] h-[6px] w-[6px] shrink-0 rounded-full bg-gray-400" />
+                        <span>{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-4 text-[14px] leading-6 text-gray-500">
+                    등록된 보증 내용이 없습니다.
+                  </p>
+                )}
               </div>
             )}
           </div>

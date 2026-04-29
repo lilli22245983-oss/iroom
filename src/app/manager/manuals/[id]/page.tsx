@@ -22,6 +22,7 @@ import {
   ManualFaqItemModel,
   SpecSectionModel,
   SpecDataItemModel,
+  ManualWarrantyModel,
 } from "@/model/firebase/manual_entry_model";
 import {
   ArrowLeft,
@@ -32,7 +33,6 @@ import {
   Upload,
   ImageIcon,
 } from "lucide-react";
-
 
 function createId(prefix: string) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -99,7 +99,7 @@ function ImageUploadBox({
           </div>
 
           <div className="min-w-0 flex-1">
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-[16px] bg-white px-4 py-2.5 text-sm font-bold text-slate-900 border border-slate-300 transition active:scale-[0.98]">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-[16px] border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition active:scale-[0.98]">
               <Upload size={16} />
               {uploading ? "업로드 중..." : "컴퓨터에서 이미지 선택"}
 
@@ -164,6 +164,10 @@ export default function ManagerManualEditPage() {
   const [accessories, setAccessories] = useState<AccessoryItemModel[]>([]);
   const [faqs, setFaqs] = useState<ManualFaqItemModel[]>([]);
   const [specs, setSpecs] = useState<SpecSectionModel[]>([]);
+
+  const [warrantyTitle, setWarrantyTitle] = useState("제품 보증 안내");
+  const [warrantyContent, setWarrantyContent] = useState("");
+  const [warrantyIsActive, setWarrantyIsActive] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -273,7 +277,16 @@ export default function ManagerManualEditPage() {
       setAccessories(
         manual.accessories?.length
           ? manual.accessories
-          : [new AccessoryItemModel(createId("accessory"), "", "", "", false, 0)]
+          : [
+              new AccessoryItemModel(
+                createId("accessory"),
+                "",
+                "",
+                "",
+                false,
+                0
+              ),
+            ]
       );
 
       setFaqs(
@@ -294,6 +307,10 @@ export default function ManagerManualEditPage() {
               ),
             ]
       );
+
+      setWarrantyTitle(manual.warranty?.title || "제품 보증 안내");
+      setWarrantyContent(manual.warranty?.content || "");
+      setWarrantyIsActive(manual.warranty?.isActive ?? true);
     } catch (error) {
       alert("매뉴얼을 불러오지 못했어요.");
       router.replace("/manager/manuals");
@@ -421,12 +438,7 @@ export default function ManagerManualEditPage() {
     setSpecs((prev) =>
       prev.map((section, i) =>
         i === sectionIndex
-          ? new SpecSectionModel(
-              section.id,
-              value,
-              section.data,
-              section.order
-            )
+          ? new SpecSectionModel(section.id, value, section.data, section.order)
           : section
       )
     );
@@ -436,12 +448,7 @@ export default function ManagerManualEditPage() {
     setSpecs((prev) =>
       prev.map((section, i) =>
         i === sectionIndex
-          ? new SpecSectionModel(
-              section.id,
-              section.title,
-              section.data,
-              value
-            )
+          ? new SpecSectionModel(section.id, section.title, section.data, value)
           : section
       )
     );
@@ -639,6 +646,11 @@ export default function ManagerManualEditPage() {
                 Number.isFinite(section.order) ? section.order : index
               )
           ),
+        new ManualWarrantyModel(
+          warrantyTitle.trim() || "제품 보증 안내",
+          warrantyContent.trim(),
+          warrantyIsActive
+        ),
         isActive
       );
 
@@ -716,7 +728,7 @@ export default function ManagerManualEditPage() {
 
         <section className="mt-7">
           <div
-            className="inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-[11px] font-extrabold tracking-[0.18em] uppercase"
+            className="inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-[11px] font-extrabold uppercase tracking-[0.18em]"
             style={{
               backgroundColor: "#ecfdf5",
               color: "#15803d",
@@ -739,6 +751,7 @@ export default function ManagerManualEditPage() {
         <div className="mt-6 space-y-5">
           <section className={cardClass}>
             <h2 className="text-[20px] font-black text-slate-900">기본 정보</h2>
+
             <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <label className={labelClass}>연결 제품</label>
@@ -788,6 +801,7 @@ export default function ManagerManualEditPage() {
 
             <div className="mt-5">
               <label className={labelClass}>스마트케어 문구</label>
+
               <div className="space-y-3">
                 {smartCareMessages.map((message, index) => (
                   <div key={index} className="flex gap-2">
@@ -803,6 +817,7 @@ export default function ManagerManualEditPage() {
                       placeholder="예: 흡입력이 약해졌어요"
                       className={inputClass}
                     />
+
                     <button
                       type="button"
                       onClick={() =>
@@ -848,13 +863,22 @@ export default function ManagerManualEditPage() {
 
           <section className={cardClass}>
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-[20px] font-black text-slate-900">영상 가이드</h2>
+              <h2 className="text-[20px] font-black text-slate-900">
+                영상 가이드
+              </h2>
+
               <button
                 type="button"
                 onClick={() =>
                   setVideos((prev) => [
                     ...prev,
-                    new VideoGuideItemModel(createId("video"), "", "", "", prev.length),
+                    new VideoGuideItemModel(
+                      createId("video"),
+                      "",
+                      "",
+                      "",
+                      prev.length
+                    ),
                   ])
                 }
                 className="inline-flex items-center gap-2 rounded-[16px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700"
@@ -866,17 +890,31 @@ export default function ManagerManualEditPage() {
 
             <div className="mt-5 space-y-4">
               {videos.map((video, index) => (
-                <div key={video.id} className="rounded-[22px] border border-slate-200 p-4">
+                <div
+                  key={video.id}
+                  className="rounded-[22px] border border-slate-200 p-4"
+                >
                   <div className="mb-4 flex items-center justify-between">
                     <p className="font-bold text-slate-800">영상 {index + 1}</p>
+
                     <button
                       type="button"
                       onClick={() =>
                         setVideos((prev) => {
-                          const next = prev.filter((item) => item.id !== video.id);
+                          const next = prev.filter(
+                            (item) => item.id !== video.id
+                          );
                           return next.length
                             ? next
-                            : [new VideoGuideItemModel(createId("video"), "", "", "", 0)];
+                            : [
+                                new VideoGuideItemModel(
+                                  createId("video"),
+                                  "",
+                                  "",
+                                  "",
+                                  0
+                                ),
+                              ];
                         })
                       }
                       className="inline-flex items-center gap-2 rounded-[14px] border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-600"
@@ -891,33 +929,44 @@ export default function ManagerManualEditPage() {
                       <label className={labelClass}>제목</label>
                       <input
                         value={video.title}
-                        onChange={(e) => updateVideo(index, "title", e.target.value)}
+                        onChange={(e) =>
+                          updateVideo(index, "title", e.target.value)
+                        }
                         className={inputClass}
                       />
                     </div>
+
                     <div>
                       <label className={labelClass}>부제목</label>
                       <input
                         value={video.subtitle}
-                        onChange={(e) => updateVideo(index, "subtitle", e.target.value)}
+                        onChange={(e) =>
+                          updateVideo(index, "subtitle", e.target.value)
+                        }
                         className={inputClass}
                       />
                     </div>
+
                     <div>
                       <label className={labelClass}>영상 URL</label>
                       <input
                         value={video.url}
-                        onChange={(e) => updateVideo(index, "url", e.target.value)}
+                        onChange={(e) =>
+                          updateVideo(index, "url", e.target.value)
+                        }
                         className={inputClass}
                         placeholder="유튜브 영상 링크"
                       />
                     </div>
+
                     <div>
                       <label className={labelClass}>정렬 순서</label>
                       <input
                         type="number"
                         value={video.order}
-                        onChange={(e) => updateVideo(index, "order", Number(e.target.value))}
+                        onChange={(e) =>
+                          updateVideo(index, "order", Number(e.target.value))
+                        }
                         className={inputClass}
                       />
                     </div>
@@ -929,13 +978,22 @@ export default function ManagerManualEditPage() {
 
           <section className={cardClass}>
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-[20px] font-black text-slate-900">사용 가이드</h2>
+              <h2 className="text-[20px] font-black text-slate-900">
+                사용 가이드
+              </h2>
+
               <button
                 type="button"
                 onClick={() =>
                   setUsageGuides((prev) => [
                     ...prev,
-                    new UsageGuideItemModel(createId("usage"), "", "", "", prev.length),
+                    new UsageGuideItemModel(
+                      createId("usage"),
+                      "",
+                      "",
+                      "",
+                      prev.length
+                    ),
                   ])
                 }
                 className="inline-flex items-center gap-2 rounded-[16px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700"
@@ -947,9 +1005,15 @@ export default function ManagerManualEditPage() {
 
             <div className="mt-5 space-y-4">
               {usageGuides.map((item, index) => (
-                <div key={item.id} className="rounded-[22px] border border-slate-200 p-4">
+                <div
+                  key={item.id}
+                  className="rounded-[22px] border border-slate-200 p-4"
+                >
                   <div className="mb-4 flex items-center justify-between">
-                    <p className="font-bold text-slate-800">가이드 {index + 1}</p>
+                    <p className="font-bold text-slate-800">
+                      가이드 {index + 1}
+                    </p>
+
                     <button
                       type="button"
                       onClick={() =>
@@ -957,7 +1021,15 @@ export default function ManagerManualEditPage() {
                           const next = prev.filter((x) => x.id !== item.id);
                           return next.length
                             ? next
-                            : [new UsageGuideItemModel(createId("usage"), "", "", "", 0)];
+                            : [
+                                new UsageGuideItemModel(
+                                  createId("usage"),
+                                  "",
+                                  "",
+                                  "",
+                                  0
+                                ),
+                              ];
                         })
                       }
                       className="inline-flex items-center gap-2 rounded-[14px] border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-600"
@@ -972,7 +1044,9 @@ export default function ManagerManualEditPage() {
                       <label className={labelClass}>제목</label>
                       <input
                         value={item.title}
-                        onChange={(e) => updateUsageGuide(index, "title", e.target.value)}
+                        onChange={(e) =>
+                          updateUsageGuide(index, "title", e.target.value)
+                        }
                         className={inputClass}
                       />
                     </div>
@@ -981,7 +1055,9 @@ export default function ManagerManualEditPage() {
                       label="이미지"
                       value={item.image}
                       folder="manuals/usage-guides"
-                      onChange={(url) => updateUsageGuide(index, "image", url)}
+                      onChange={(url) =>
+                        updateUsageGuide(index, "image", url)
+                      }
                     />
 
                     <div>
@@ -990,18 +1066,27 @@ export default function ManagerManualEditPage() {
                         rows={4}
                         value={item.description}
                         onChange={(e) =>
-                          updateUsageGuide(index, "description", e.target.value)
+                          updateUsageGuide(
+                            index,
+                            "description",
+                            e.target.value
+                          )
                         }
                         className={textareaClass}
                       />
                     </div>
+
                     <div>
                       <label className={labelClass}>정렬 순서</label>
                       <input
                         type="number"
                         value={item.order}
                         onChange={(e) =>
-                          updateUsageGuide(index, "order", Number(e.target.value))
+                          updateUsageGuide(
+                            index,
+                            "order",
+                            Number(e.target.value)
+                          )
                         }
                         className={inputClass}
                       />
@@ -1015,6 +1100,7 @@ export default function ManagerManualEditPage() {
           <section className={cardClass}>
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-[20px] font-black text-slate-900">소모품</h2>
+
               <button
                 type="button"
                 onClick={() =>
@@ -1038,9 +1124,15 @@ export default function ManagerManualEditPage() {
 
             <div className="mt-5 space-y-4">
               {consumables.map((item, index) => (
-                <div key={item.id} className="rounded-[22px] border border-slate-200 p-4">
+                <div
+                  key={item.id}
+                  className="rounded-[22px] border border-slate-200 p-4"
+                >
                   <div className="mb-4 flex items-center justify-between">
-                    <p className="font-bold text-slate-800">소모품 {index + 1}</p>
+                    <p className="font-bold text-slate-800">
+                      소모품 {index + 1}
+                    </p>
+
                     <button
                       type="button"
                       onClick={() =>
@@ -1048,7 +1140,15 @@ export default function ManagerManualEditPage() {
                           const next = prev.filter((x) => x.id !== item.id);
                           return next.length
                             ? next
-                            : [new ConsumableItemModel(createId("consumable"), "", "", "", 0)];
+                            : [
+                                new ConsumableItemModel(
+                                  createId("consumable"),
+                                  "",
+                                  "",
+                                  "",
+                                  0
+                                ),
+                              ];
                         })
                       }
                       className="inline-flex items-center gap-2 rounded-[14px] border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-600"
@@ -1063,16 +1163,25 @@ export default function ManagerManualEditPage() {
                       <label className={labelClass}>이름</label>
                       <input
                         value={item.name}
-                        onChange={(e) => updateConsumable(index, "name", e.target.value)}
+                        onChange={(e) =>
+                          updateConsumable(index, "name", e.target.value)
+                        }
                         className={inputClass}
                       />
                     </div>
+
                     <div>
                       <label className={labelClass}>정렬 순서</label>
                       <input
                         type="number"
                         value={item.order}
-                        onChange={(e) => updateConsumable(index, "order", Number(e.target.value))}
+                        onChange={(e) =>
+                          updateConsumable(
+                            index,
+                            "order",
+                            Number(e.target.value)
+                          )
+                        }
                         className={inputClass}
                       />
                     </div>
@@ -1082,7 +1191,9 @@ export default function ManagerManualEditPage() {
                         label="이미지"
                         value={item.image}
                         folder="manuals/consumables"
-                        onChange={(url) => updateConsumable(index, "image", url)}
+                        onChange={(url) =>
+                          updateConsumable(index, "image", url)
+                        }
                       />
                     </div>
 
@@ -1090,7 +1201,9 @@ export default function ManagerManualEditPage() {
                       <label className={labelClass}>링크 URL</label>
                       <input
                         value={item.url}
-                        onChange={(e) => updateConsumable(index, "url", e.target.value)}
+                        onChange={(e) =>
+                          updateConsumable(index, "url", e.target.value)
+                        }
                         className={inputClass}
                         placeholder="구매 링크"
                       />
@@ -1127,6 +1240,7 @@ export default function ManagerManualEditPage() {
           <section className={cardClass}>
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-[20px] font-black text-slate-900">액세서리</h2>
+
               <button
                 type="button"
                 onClick={() =>
@@ -1151,9 +1265,15 @@ export default function ManagerManualEditPage() {
 
             <div className="mt-5 space-y-4">
               {accessories.map((item, index) => (
-                <div key={item.id} className="rounded-[22px] border border-slate-200 p-4">
+                <div
+                  key={item.id}
+                  className="rounded-[22px] border border-slate-200 p-4"
+                >
                   <div className="mb-4 flex items-center justify-between">
-                    <p className="font-bold text-slate-800">액세서리 {index + 1}</p>
+                    <p className="font-bold text-slate-800">
+                      액세서리 {index + 1}
+                    </p>
+
                     <button
                       type="button"
                       onClick={() =>
@@ -1186,16 +1306,25 @@ export default function ManagerManualEditPage() {
                         <label className={labelClass}>제목</label>
                         <input
                           value={item.title}
-                          onChange={(e) => updateAccessory(index, "title", e.target.value)}
+                          onChange={(e) =>
+                            updateAccessory(index, "title", e.target.value)
+                          }
                           className={inputClass}
                         />
                       </div>
+
                       <div>
                         <label className={labelClass}>정렬 순서</label>
                         <input
                           type="number"
                           value={item.order}
-                          onChange={(e) => updateAccessory(index, "order", Number(e.target.value))}
+                          onChange={(e) =>
+                            updateAccessory(
+                              index,
+                              "order",
+                              Number(e.target.value)
+                            )
+                          }
                           className={inputClass}
                         />
                       </div>
@@ -1214,7 +1343,11 @@ export default function ManagerManualEditPage() {
                         rows={4}
                         value={item.description}
                         onChange={(e) =>
-                          updateAccessory(index, "description", e.target.value)
+                          updateAccessory(
+                            index,
+                            "description",
+                            e.target.value
+                          )
                         }
                         className={textareaClass}
                       />
@@ -1245,7 +1378,59 @@ export default function ManagerManualEditPage() {
 
           <section className={cardClass}>
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-[20px] font-black text-slate-900">매뉴얼 FAQ</h2>
+              <h2 className="text-[20px] font-black text-slate-900">
+                제품 보증
+              </h2>
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 gap-4">
+              <div>
+                <label className={labelClass}>보증 사용 여부</label>
+                <select
+                  value={warrantyIsActive ? "true" : "false"}
+                  onChange={(e) => setWarrantyIsActive(e.target.value === "true")}
+                  className={inputClass}
+                >
+                  <option value="true">사용</option>
+                  <option value="false">숨김</option>
+                </select>
+              </div>
+
+              <div>
+                <label className={labelClass}>보증 제목</label>
+                <input
+                  value={warrantyTitle}
+                  onChange={(e) => setWarrantyTitle(e.target.value)}
+                  className={inputClass}
+                  placeholder="예: 제품 보증 안내"
+                />
+              </div>
+
+              <div>
+                <label className={labelClass}>보증 내용</label>
+                <textarea
+                  rows={8}
+                  value={warrantyContent}
+                  onChange={(e) => setWarrantyContent(e.target.value)}
+                  className={textareaClass}
+                  placeholder={`예:
+구입일로부터 1년간 무상 보증이 제공됩니다.
+소모품 및 고객 과실로 인한 고장은 보증 대상에서 제외됩니다.
+A/S 접수 시 구매 영수증 또는 구매 내역이 필요할 수 있습니다.`}
+                />
+                <p className="mt-2 text-[13px] font-medium text-slate-500">
+                  한 줄씩 입력하면 사용자 화면에서 항목처럼 나눠서 표시돼요.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className={cardClass}>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-[20px] font-black text-slate-900">
+                매뉴얼 FAQ
+              </h2>
+
               <button
                 type="button"
                 onClick={() =>
@@ -1263,9 +1448,13 @@ export default function ManagerManualEditPage() {
 
             <div className="mt-5 space-y-4">
               {faqs.map((item, index) => (
-                <div key={item.id} className="rounded-[22px] border border-slate-200 p-4">
+                <div
+                  key={item.id}
+                  className="rounded-[22px] border border-slate-200 p-4"
+                >
                   <div className="mb-4 flex items-center justify-between">
                     <p className="font-bold text-slate-800">FAQ {index + 1}</p>
+
                     <button
                       type="button"
                       onClick={() =>
@@ -1273,7 +1462,14 @@ export default function ManagerManualEditPage() {
                           const next = prev.filter((x) => x.id !== item.id);
                           return next.length
                             ? next
-                            : [new ManualFaqItemModel(createId("faq"), "", "", 0)];
+                            : [
+                                new ManualFaqItemModel(
+                                  createId("faq"),
+                                  "",
+                                  "",
+                                  0
+                                ),
+                              ];
                         })
                       }
                       className="inline-flex items-center gap-2 rounded-[14px] border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-600"
@@ -1288,25 +1484,33 @@ export default function ManagerManualEditPage() {
                       <label className={labelClass}>질문</label>
                       <input
                         value={item.question}
-                        onChange={(e) => updateFaq(index, "question", e.target.value)}
+                        onChange={(e) =>
+                          updateFaq(index, "question", e.target.value)
+                        }
                         className={inputClass}
                       />
                     </div>
+
                     <div>
                       <label className={labelClass}>답변</label>
                       <textarea
                         rows={4}
                         value={item.answer}
-                        onChange={(e) => updateFaq(index, "answer", e.target.value)}
+                        onChange={(e) =>
+                          updateFaq(index, "answer", e.target.value)
+                        }
                         className={textareaClass}
                       />
                     </div>
+
                     <div>
                       <label className={labelClass}>정렬 순서</label>
                       <input
                         type="number"
                         value={item.order}
-                        onChange={(e) => updateFaq(index, "order", Number(e.target.value))}
+                        onChange={(e) =>
+                          updateFaq(index, "order", Number(e.target.value))
+                        }
                         className={inputClass}
                       />
                     </div>
@@ -1318,7 +1522,10 @@ export default function ManagerManualEditPage() {
 
           <section className={cardClass}>
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-[20px] font-black text-slate-900">제품 사양</h2>
+              <h2 className="text-[20px] font-black text-slate-900">
+                제품 사양
+              </h2>
+
               <button
                 type="button"
                 onClick={() =>
@@ -1349,6 +1556,7 @@ export default function ManagerManualEditPage() {
                     <p className="font-bold text-slate-800">
                       사양 섹션 {sectionIndex + 1}
                     </p>
+
                     <button
                       type="button"
                       onClick={() =>
@@ -1378,7 +1586,9 @@ export default function ManagerManualEditPage() {
                       <label className={labelClass}>섹션 제목</label>
                       <input
                         value={section.title}
-                        onChange={(e) => updateSpecTitle(sectionIndex, e.target.value)}
+                        onChange={(e) =>
+                          updateSpecTitle(sectionIndex, e.target.value)
+                        }
                         className={inputClass}
                       />
                     </div>
@@ -1389,7 +1599,10 @@ export default function ManagerManualEditPage() {
                         type="number"
                         value={section.order}
                         onChange={(e) =>
-                          updateSpecOrder(sectionIndex, Number(e.target.value))
+                          updateSpecOrder(
+                            sectionIndex,
+                            Number(e.target.value)
+                          )
                         }
                         className={inputClass}
                       />
@@ -1405,22 +1618,36 @@ export default function ManagerManualEditPage() {
                         <input
                           value={row.label}
                           onChange={(e) =>
-                            updateSpecData(sectionIndex, dataIndex, "label", e.target.value)
+                            updateSpecData(
+                              sectionIndex,
+                              dataIndex,
+                              "label",
+                              e.target.value
+                            )
                           }
                           placeholder="항목명"
                           className={inputClass}
                         />
+
                         <input
                           value={row.value}
                           onChange={(e) =>
-                            updateSpecData(sectionIndex, dataIndex, "value", e.target.value)
+                            updateSpecData(
+                              sectionIndex,
+                              dataIndex,
+                              "value",
+                              e.target.value
+                            )
                           }
                           placeholder="값"
                           className={inputClass}
                         />
+
                         <button
                           type="button"
-                          onClick={() => removeSpecDataRow(sectionIndex, dataIndex)}
+                          onClick={() =>
+                            removeSpecDataRow(sectionIndex, dataIndex)
+                          }
                           className="inline-flex h-12 items-center justify-center rounded-[16px] border border-red-200 bg-red-50 px-4 text-red-600"
                         >
                           <Trash2 size={16} />
