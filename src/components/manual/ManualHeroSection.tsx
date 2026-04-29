@@ -18,6 +18,7 @@ type Props = {
 };
 
 export default function ManualHeroSection({ itemName }: Props) {
+  
   const [policyOpen, setPolicyOpen] = useState(false);
   const [selectedColor, setSelectedColor] = useState<"white" | "black">(
     "white"
@@ -95,6 +96,7 @@ export default function ManualHeroSection({ itemName }: Props) {
       : null;
 
   const displayImage = selectedColor === "white" ? whiteImage : blackImage;
+  const hasBothImages = !!(whiteImage && blackImage);
 
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
@@ -142,6 +144,7 @@ export default function ManualHeroSection({ itemName }: Props) {
   const policyContent =
     asPolicy?.content ||
     "제품 보증 기간 내 정상적인 사용 상태에서 발생한 고장은 무상으로 점검 및 수리가 가능합니다.";
+    
 
   return (
     <>
@@ -165,11 +168,17 @@ export default function ManualHeroSection({ itemName }: Props) {
             </button>
 
             <div className="mt-4">
-              <button
-                type="button"
-                onClick={handleToggleColor}
-                className="inline-flex h-[42px] cursor-pointer items-center gap-2.5 rounded-full border border-white/15 bg-white/10 px-3.5 backdrop-blur-sm transition hover:bg-white/15 active:scale-95"
-              >
+                <button
+                  type="button"
+                  onClick={hasBothImages ? handleToggleColor : undefined}
+                  disabled={!hasBothImages}
+                  className={`inline-flex h-[42px] items-center gap-2.5 rounded-full border border-white/15 px-3.5 backdrop-blur-sm transition active:scale-95
+                    ${
+                      hasBothImages
+                        ? "cursor-pointer bg-white/10 hover:bg-white/15"
+                        : "cursor-not-allowed bg-white/5 opacity-50"
+                    }`}
+                >
                 <span className="text-[14px] font-semibold text-white">
                   Color
                 </span>
