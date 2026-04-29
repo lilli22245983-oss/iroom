@@ -51,7 +51,6 @@ export default function ManualHeroSection({ itemName }: Props) {
 
         setManual(found ?? null);
       } catch (error) {
-        console.error("메뉴얼 hero 불러오기 실패:", error);
       }
     };
 
@@ -69,7 +68,6 @@ export default function ManualHeroSection({ itemName }: Props) {
           setAsPolicy(PolicyModel.fromMap(snap.data(), snap.id));
         }
       } catch (error) {
-        console.error("A/S 정책 불러오기 실패:", error);
       }
     };
 
@@ -89,12 +87,12 @@ export default function ManualHeroSection({ itemName }: Props) {
   const whiteImage =
     colorImages.white && colorImages.white.trim() !== ""
       ? colorImages.white
-      : "/images/manual/vacuum-white.png";
+      : null;
 
   const blackImage =
     colorImages.black && colorImages.black.trim() !== ""
       ? colorImages.black
-      : "/images/manual/vacuum-black.png";
+      : null;
 
   const displayImage = selectedColor === "white" ? whiteImage : blackImage;
 
@@ -187,13 +185,19 @@ export default function ManualHeroSection({ itemName }: Props) {
 
           <div className="absolute right-4 top-1/2 flex w-[34%] min-w-[110px] -translate-y-1/2 justify-center">
             <div className="flex h-[220px] w-full items-center justify-center rounded-[20px] p-2">
-              <img
-                src={displayImage}
-                alt={`${manual?.productName || itemName} ${selectedColor}`}
-                className={`float-vacuum h-full w-full object-contain transition-all duration-300 ${
-                  imageVisible ? "scale-100 opacity-100" : "scale-95 opacity-0"
-                }`}
-              />
+              {displayImage ? (
+                <img
+                  src={displayImage}
+                  alt={`${manual?.productName || itemName} ${selectedColor}`}
+                  className={`float-vacuum h-full w-full object-contain transition-all duration-300 ${
+                    imageVisible ? "scale-100 opacity-100" : "scale-95 opacity-0"
+                  }`}
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-white/70">
+                  이미지 없음
+                </div>
+              )}
             </div>
           </div>
         </div>
